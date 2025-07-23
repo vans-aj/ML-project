@@ -1,3 +1,6 @@
+# we just have read the data from csv and spit it into train and test set and then 
+# push it into artifacts folder with train.csv, test.csv and data.csv
+
 import os
 import sys
 from src.logger import logging
@@ -6,6 +9,8 @@ import pandas as pd
 
 from sklearn.model_selection import train_test_split
 from dataclasses import dataclass # to create classes for data attributes
+from src.components.data_transformation import DataTransformation
+from src.components.data_transformation import DataTransformationConfig
 
 @dataclass # iski wajha se constructor na likhe tho chal jayega 
 class DataIngestionConfig:
@@ -46,3 +51,6 @@ if __name__ == "__main__":
     train_path, test_path = data_ingestion.initiate_data_ingestion()
     print(f"Train data saved at: {train_path}")
     print(f"Test data saved at: {test_path}")
+
+    data_transformation = DataTransformation()
+    data_transformation.initiate_data_transformation(train_path, test_path)
