@@ -12,6 +12,12 @@ from dataclasses import dataclass # to create classes for data attributes
 from src.components.data_transformation import DataTransformation
 from src.components.data_transformation import DataTransformationConfig
 
+#after model trainer.py 
+from src.components.model_trainer import ModelTrainer
+from src.components.model_trainer import ModelTrainerConfig
+
+
+
 @dataclass # iski wajha se constructor na likhe tho chal jayega 
 class DataIngestionConfig:
     train_data_path: str = os.path.join('artifacts', 'train.csv')
@@ -53,4 +59,7 @@ if __name__ == "__main__":
     print(f"Test data saved at: {test_path}")
 
     data_transformation = DataTransformation()
-    data_transformation.initiate_data_transformation(train_path, test_path)
+    train_arr, test_arr ,_ = data_transformation.initiate_data_transformation(train_path, test_path)
+
+    model_trainer = ModelTrainer()
+    print(model_trainer.initiate_model_trainer(train_arr,test_arr))

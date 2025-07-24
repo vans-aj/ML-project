@@ -14,3 +14,6 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S'
 )
+
+# Add a blank line to separate logs from different runs
+logging.info("\n")

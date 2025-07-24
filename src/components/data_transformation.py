@@ -78,16 +78,10 @@ class DataTransformation:
                 obj= preprocessor_obj
             )
 
-            return {
-                'train_arr': train_arr,
-                'test_arr': test_arr,
-                'preprocessor_obj_file_path': self.transformation_config.preprocessor_obj_file_path
-            }
+            return train_arr, test_arr, self.transformation_config.preprocessor_obj_file_path
             
 
         except Exception as e:
             raise CustomException(e, sys) from e
             logging.error(f"Error during data transformation: {e}")
         
-
-           
