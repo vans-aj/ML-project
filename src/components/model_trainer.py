@@ -1,78 +1,125 @@
 import os
 import sys
-from dataclasses import dataclass # to create classes for data attributes
+from dataclasses import dataclass
 
 from catboost import CatBoostRegressor
 from sklearn.ensemble import (
-    RandomForestRegressor,
+    AdaBoostRegressor,
     GradientBoostingRegressor,
-    AdaBoostRegressor
+    RandomForestRegressor,
 )
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.metrics import r2_score
 from sklearn.neighbors import KNeighborsRegressor
-from xgboost import XGBRegressor
 from sklearn.tree import DecisionTreeRegressor
+from xgboost import XGBRegressor
 
-from src.logger import logging
 from src.exception import CustomException
+from src.logger import logging
+
 from src.utils import save_object, evaluate_model
 
 @dataclass
-class ModelTrainerConfig: # to create a class for model training configuration
-    trained_model_file_path = os.path.join('artifacts', 'model.pkl')
+class ModelTrainerConfig:
+    trained_model_file_path=os.path.join("artifacts","model.pkl")
 
 class ModelTrainer:
     def __init__(self):
-        self.model_trainer_config = ModelTrainerConfig()
-
-    def initiate_model_trainer(self, train_array, test_array): # for model training
+        self.model_trainer_config=ModelTrainerConfig
+    
+    
+    def initiate_model_trainer(self,train_array,test_array):
         try:
-            logging.info("Model Training started")
-            logging.info("splitting train and test arrays into features and target variable")
-            logging.info(f"Type of train_array: {type(train_array)}")
-            logging.info(f"Type of test_array: {type(test_array)}")
-            import numpy as np
-
-            # Ensure the arrays are numpy arrays
-            train_array = np.array(train_array)
-            test_array = np.array(test_array)
-            logging.info(f"train_array shape: {train_array.shape}")
-            logging.info(f"test_array shape: {test_array.shape}")
-
-            X_train, Y_train = train_array[:, :-1], train_array[:, -1] # train arrya and test array are receving from data transformation.py
-            X_test, Y_test = test_array[:, :-1], test_array[:, -1]
+            logging.info("split training and test input data")
+            X_train,y_train,X_test,y_test=(
+                train_array[:,:-1],
+                train_array[:,-1],
+                test_array[:,:-1],
+                test_array[:,-1]
+            )
             models = {
-                "RandomForest": RandomForestRegressor(),
-                "GradientBoosting": GradientBoostingRegressor(),
-                "AdaBoost": AdaBoostRegressor(),
-                "LinearRegression": LinearRegression(),
-                "KNeighbors": KNeighborsRegressor(),
-                "XGBoost": XGBRegressor(),
-                "DecisionTree": DecisionTreeRegressor(),
-                "CatBoost": CatBoostRegressor(verbose=False)
+                "Random Forest": RandomForestRegressor(),
+                "Decision Tree": DecisionTreeRegressor(),
+                "Gradient Boosting": GradientBoostingRegressor(),
+                "Linear Regression": LinearRegression(),
+                "XGBRegressor": XGBRegressor(),
+                "CatBoosting Regressor": CatBoostRegressor(verbose=False),
+                "AdaBoost Regressor": AdaBoostRegressor(),
             }
-            model_report: dict = evaluate_model(X_train=X_train, Y_train=Y_train, X_test=X_test, Y_test=Y_test, models=models)
 
-            # Find the best model by r2_score
-            best_model_name = max(model_report, key=lambda name: model_report[name]['r2_score'])
-            best_model_score = model_report[best_model_name]['r2_score']
-            best_model = models[best_model_name]
-            if (best_model_score < 0.6):
-                raise CustomException("No best model found with sufficient accuracy", sys)
-            logging.info(f"Best model found: {best_model_name} with R2 score: {best_model_score}")
+            params={
+                "Decision Tree": {
+                    'criterion':['squared_error', 'friedman_mse', 'absolute_error', 'poisson'],
+                    # 'splitter':['best','random'],
+                    # 'max_features':['sqrt','log2'],
+                },
+                "Random Forest":{
+                    # 'criterion':['squared_error', 'friedman_mse', 'absolute_error', 'poisson'],
+                 
+                    # 'max_features':['sqrt','log2',None],
+                    'n_estimators': [8,16,32,64,128,256]
+                },
+                "Gradient Boosting":{
+                    # 'loss':['squared_error', 'huber', 'absolute_error', 'quantile'],
+                    'learning_rate':[.1,.01,.05,.001],
+                    'subsample':[0.6,0.7,0.75,0.8,0.85,0.9],
+                    # 'criterion':['squared_error', 'friedman_mse'],
+                    # 'max_features':['auto','sqrt','log2'],
+                    'n_estimators': [8,16,32,64,128,256]
+                },
+                "Linear Regression":{},
+                "XGBRegressor":{
+                    'learning_rate':[.1,.01,.05,.001],
+                    'n_estimators': [8,16,32,64,128,256]
+                },
+                "CatBoosting Regressor":{
+                    'depth': [6,8,10],
+                    'learning_rate': [0.01, 0.05, 0.1],
+                    'iterations': [30, 50, 100]
+                },
+                "AdaBoost Regressor":{
+                    'learning_rate':[.1,.01,0.5,.001],
+                    # 'loss':['linear','square','exponential'],
+                    'n_estimators': [8,16,32,64,128,256]
+                }
+                
+            }
 
-            save_object( # save the best model to a file
+
+
+            model_report, best_estimators = evaluate_model(
+                X_train=X_train,
+                Y_train=y_train,
+                X_test=X_test,
+                Y_test=y_test,
+                models=models,
+                params=params
+            )
+
+            # Find the best model based on r2_score
+            best_model_name = None
+            best_model_score = float('-inf')
+            for name, scores in model_report.items():
+                if scores["r2_score"] > best_model_score:
+                    best_model_score = scores["r2_score"]
+                    best_model_name = name
+
+            best_model = best_estimators[best_model_name]  # Use the fitted estimator!
+
+            if best_model_score < 0.6:
+                raise CustomException("No best model found")
+            logging.info(f"Best found model on both training and testing dataset")
+
+            save_object(
                 file_path=self.model_trainer_config.trained_model_file_path,
                 obj=best_model
             )
-            logging.info("Model saved ")
-            
-            predict = best_model.predict(X_test)
-            r2_square = r2_score(Y_test, predict)
 
-            return r2_square
+            predicted = best_model.predict(X_test)
+            r2_square = r2_score(y_test, predicted)
+            return best_model, r2_square
+
+
 
         except Exception as e:
-            logging.error(f"Error occurred during model training: {e}")
-            raise CustomException("Model training failed", sys)
+            raise CustomException(e,sys)
