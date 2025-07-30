@@ -41,3 +41,13 @@ def evaluate_model(X_train, Y_train, X_test, Y_test, models, params):
         return model_report, best_estimators
     except Exception as e:
         raise CustomException(e, sys) from e
+    
+
+def load_object(file_path):
+    try:
+        with open(file_path, 'rb') as file:
+            obj = dill.load(file)
+        logging.info(f"Object loaded from {file_path}")
+        return obj
+    except Exception as e:
+        raise CustomException(e, sys) from e
